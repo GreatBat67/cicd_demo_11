@@ -1,0 +1,33 @@
+name: 'Snowflake dbt Transformation Module'
+description: 'Modular core engine scheduling and compiling dbt project model targets'
+inputs:
+  dbt_dir:
+    description: 'Path directory holding dbt models data'
+    required: true
+  dbt_project:
+    description: 'Target dbt project profile context label'
+    required: true
+  dcm_target:
+    description: 'Target operational database destination map'
+    required: true
+  action_type:
+    description: 'Execution context mode (plan or deploy)'
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Snowflake CLI (OIDC)
+      uses: snowflakedb/snowflake-cli-action@v2.0
+      with:
+        use-oidc: true
+    - name: Execute Targeted dbt Transformations
+      shell: bash
+      run: |
+        if [ "${{ inputs.action_type }}" = "plan" ]; then
+          echo "Compiling structural transform configurations against virtual target..."
+          snow dbt deploy ${{ inputs.dbt_project }} --source ${{ inputs.dbt_dir }} --force -x
+        else
+          echo "LIVE: Synchronizing and deploying live production dbt model transforms..."
+          snow dbt deploy ${{ inputs.dbt_project }} --source ${{ inputs.dbt_dir }} --force -x
+          snow dbt execute -x ${{ inputs.dbt_project }} run --target ${{ inputs.dcm_target }}
+        fi

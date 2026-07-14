@@ -1,0 +1,106 @@
+# ==============================================================================
+# GLOBAL REPOSITORY GOVERNANCE SETTINGS
+# ==============================================================================
+owner: "GreatBat67"
+repo_name: "cicd_demo_9"
+project_description: "Snowflake Gated GitOps Core Offering"
+
+# The sequential promotion flow of code across environments
+branch_sequence:
+  - "dev"
+  - "qa"
+  - "cicd"
+  - "main"
+
+# 🚚 Inter-Repository Source Configuration Meta (Template Target)
+source_repository: "https://github.com/kipibi/CI_CD_STANDARD_TIER_OFFERING_TEMPLATE"
+source_branch: "dev"
+
+# Codebase template migration target scopes (Copied locally via Git CLI)
+files_to_copy:
+  - "requirements.txt"
+  - "snowflake.toml"
+folders_to_copy:
+  - "dcm_automation"
+  - "scripts"
+  - "dcm_dbt_cicd"
+  - "Helper_Scripts"
+
+# ==============================================================================
+# GLOBAL SNOWFLAKE CONNECTION PARAMETERS
+# ==============================================================================
+snowflake_global:
+  account_identifier: "KIPI-KIPI_PRIMARY"
+  admin_role: "github_cicd_demo_role"
+  warehouse: "github_cicd_demo_wh"
+
+# ==============================================================================
+# BRANCH ISOLATED SECURITY STATES & PIPELINE DATA VARIABLES
+# ==============================================================================
+branch_data:
+  dev:
+    require_pr: false
+    required_approvals: 0
+    approvers: []
+    sf_user: "github_cicd_demo_dev_user"
+    sf_databases:
+      - "CICD_DEMO_AUTOMATION_DEV"
+    sf_schemas:
+      - "UTILITIES"
+    dcm_target: "DCM_DEV"
+    dcm_dir: "dcm_automation"
+    dbt_dir: "./dcm_dbt_cicd"
+    dbt_project_dev: "dbt_project_dev"
+    dbt_project_prod: "dbt_project_prod"
+
+  qa:
+    require_pr: true
+    required_approvals: 1
+    approvers:
+      - "GreatBat67"
+    sf_user: "github_cicd_demo_qa_user"
+    sf_databases:
+      - "CICD_DEMO_AUTOMATION_QA"
+      - "CICD_AUTOMATION_QA"
+    sf_schemas:
+      - "UTILITIES"
+      - "PATIENTS"
+      - "MANAGEMENT"
+    dcm_target: "DCM_QA"
+    dcm_dir: "dcm_automation"
+    dbt_dir: "./dcm_dbt_cicd"
+    dbt_project_dev: "dbt_project_dev"
+    dbt_project_prod: "dbt_project_prod"
+
+  cicd:
+    require_pr: true
+    required_approvals: 1
+    approvers:
+      - "GreatBat67"
+    sf_user: "github_cicd_demo_cicd_user"
+    sf_databases:
+      - "CICD_DEMO_AUTOMATION_CICD"
+    sf_schemas:
+      - "UTILITIES"
+    dcm_target: "DCM_CICD"
+    dcm_dir: "dcm_automation"
+    dbt_dir: "./dcm_dbt_cicd"
+    dbt_project_dev: "dbt_project_dev"
+    dbt_project_prod: "dbt_project_prod"
+
+  main:
+    require_pr: true
+    required_approvals: 1
+    approvers:
+      - "GreatBat67"
+    sf_user: "github_cicd_demo_prod_user"
+    sf_databases: 
+      - "CICD_DEMO_AUTOMATION_PROD"
+    sf_schemas: 
+      - "UTILITIES"
+      - "PATIENTS"
+    dcm_target: "DCM_PROD"
+    dcm_dir: "dcm_automation"
+    dbt_dir: "./dcm_dbt_cicd"
+    dbt_project_dev: "dbt_project_dev"
+    dbt_project_prod: "dbt_project_prod"
