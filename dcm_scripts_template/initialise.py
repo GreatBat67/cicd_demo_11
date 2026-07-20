@@ -1,5 +1,7 @@
+
 import sys
-from pathlib import Path  
+import yaml
+from pathlib import Path
 
 # ============================================================
 # LOCATE SCRIPTS DIRECTORY
@@ -14,26 +16,31 @@ for directory in [current] + list(current.parents):
 if scripts_dir is None:
     raise RuntimeError("Could not locate the 'scripts' directory.")
 
-# Safely extract the project name from project_config.yml without importing config modules
-PROJECT_NAME = None
+# Safely extract the DCM project name from project_config.yml
+DCM_PROJECT_NAME = None
 config_yaml_path = scripts_dir / "config" / "project_config.yml"
 
 if config_yaml_path.exists():
-    with open(config_yaml_path, "r") as f:
-        for line in f:
-            if "name:" in line and not line.strip().startswith("#"):
-                # Extracts the value after 'name:', strips quotes and whitespace
-                PROJECT_NAME = line.split(":", 1)[1].strip().strip("'\"")
+    with open(config_yaml_path, "r", encoding="utf-8") as f:
+        parsed_yaml = yaml.safe_load(f) or {}
+        # Extract dcm_dir from branch_data (common across branches)
+        branch_data = parsed_yaml.get("branch_data", {})
+        for branch in branch_data.values():
+            if "dcm_dir" in branch:
+                DCM_PROJECT_NAME = branch["dcm_dir"]
                 break
 
-if not PROJECT_NAME:
-    raise RuntimeError("Could not parse 'name' from project_config.yml")
+if not DCM_PROJECT_NAME:
+    raise RuntimeError("Could not parse 'dcm_dir' from branch_data in project_config.yml")
 
 # ============================================================
 # CREATE DCM FOLDER STRUCTURE FIRST
 # ============================================================
-# Creates the project directory right under the workspace root directory
-base_project_dir = scripts_dir.parent / PROJECT_NAME 
+base_project_dir = scripts_dir.parent / DCM_PROJECT_NAME
+
+if not base_project_dir.exists():
+    print(f"Creating DCM folder structure under: {base_project_dir}")
+    base_project_dir.mkdir(parents=True, exist_ok=True)
 
 def create_dcm_structure(base_dir):
     """Creates the DCM project folder structure under base_dir."""
@@ -49,16 +56,17 @@ def create_dcm_structure(base_dir):
     ]
     for d in dirs:
         os.makedirs(d, exist_ok=True)
-        
+
     manifest_root = os.path.join(base_dir, "manifest.yml")
     if not os.path.exists(manifest_root):
-        with open(manifest_root, "w") as f: 
+        with open(manifest_root, "w") as f:
             pass
-            
-    print(f"Created DCM folder structure under: {base_dir}")
+        print(f"Created DCM folder structure under: {base_dir}")
+    else:
+        print(f"DCM folder structure already exists at: {base_project_dir}. Skipping creation.")
 
-# Dynamically trigger the folder creation before config validation executes
-# create_dcm_structure(base_project_dir)
+
+create_dcm_structure(base_project_dir)
 
 # ============================================================
 # PYTHON PATH & LOAD CONFIG
@@ -78,11 +86,8 @@ PROJECT_DIR = cfg.PROJECT_DIR
 # PATHS
 # ============================================================
 
-PROJECT_NAME = config.project["name"]
-
-# Ensure DCM project folder structure exists
 WORKSPACE_DIR = cfg.WORKSPACE_DIR
-_project_dir = WORKSPACE_DIR / PROJECT_NAME
+_project_dir = WORKSPACE_DIR / DCM_PROJECT_NAME
 _project_dir.mkdir(parents=True, exist_ok=True)
 (_project_dir / "sources" / "definitions").mkdir(parents=True, exist_ok=True)
 (_project_dir / "sources" / "macros").mkdir(parents=True, exist_ok=True)
@@ -104,12 +109,12 @@ LOGS_DIR.mkdir(parents=True, exist_ok=True)
 
 PHASE1_SQL_OUTPUT = LOGS_DIR / "generate_databases.sql"
 CREATE_DCM_PROJECTS_SQL = LOGS_DIR / "create_dcm_projects.sql"
-CREATE_DBT_PROJECTS_SQL = LOGS_DIR / "create_dbt_project.sql"
 
 print("=" * 60)
 print(f"Scripts Directory : {SCRIPT_DIR}")
 print(f"Logs Directory    : {LOGS_DIR}")
 print("=" * 60)
+
 # ============================================================
 # SQL EXECUTION
 # ============================================================
@@ -162,7 +167,7 @@ def execute_sql_file(sql_path: Path, session):
 
         except Exception as e:
             errors += 1
-            print(f"⚠ SQL Error: {e}")
+            print(f"SQL Error: {e}")
             print(stmt[:150])
 
     print(f"Executed : {executed}")
@@ -185,7 +190,6 @@ def run_python_script(script_path: Path):
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
 
-    # Execute the script's main() function if it exists
     if hasattr(module, "main"):
         module.main()
 
@@ -196,16 +200,13 @@ def run_python_script(script_path: Path):
 EXECUTION_ORDER = [
     {
         "phase": "PHASE 1 : INFRASTRUCTURE",
-        "scripts": [           
+        "scripts": [
             scripts_dir / "db_schema" / "generate_db_schema.py",
             scripts_dir / "dcm" / "dcm_project.py",
-            scripts_dir / "dbt" / "dbt_project.py",
-            scripts_dir / "dbt" / "generate_profiles.py",
         ],
         "post_sql": [
             PHASE1_SQL_OUTPUT,
             CREATE_DCM_PROJECTS_SQL,
-            CREATE_DBT_PROJECTS_SQL,
         ],
     },
     {
@@ -244,10 +245,10 @@ def run_pipeline(phases=None, stop_on_error=False):
     try:
         from snowflake.snowpark.context import get_active_session
         session = get_active_session()
-        print("✔ Snowpark session active")
+        print("Snowpark session active")
 
     except Exception as e:
-        print(f"⚠ Snowpark session unavailable: {e}")
+        print(f"Snowpark session unavailable: {e}")
 
     for index, phase in enumerate(EXECUTION_ORDER):
 
@@ -276,11 +277,11 @@ def run_pipeline(phases=None, stop_on_error=False):
             try:
                 run_python_script(script)
                 passed += 1
-                print("✔ Success")
+                print("Success")
 
             except Exception as e:
                 failed += 1
-                print(f"✖ Failed : {script.name}")
+                print(f"Failed : {script.name}")
                 print(str(e))
 
                 if stop_on_error:
@@ -297,7 +298,7 @@ def run_pipeline(phases=None, stop_on_error=False):
             try:
 
                 if execute_sql_file(sql_file, session):
-                    print("✔ Success")
+                    print("Success")
 
                 else:
                     failed += 1

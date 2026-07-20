@@ -1,3 +1,5 @@
+# DCM automation pipeline runner with external session support (branch-based config)
+# Co-authored with CoCo
 import sys
 import importlib.util
 from pathlib import Path
@@ -45,7 +47,7 @@ PROJECT_DIR = cfg.PROJECT_DIR
 # PATHS
 # ============================================================
 
-PROJECT_NAME = config.project["name"]
+DCM_PROJECT_NAME = config.dcm_project_name
 SCRIPT_DIR = scripts_dir
 
 LOGS_DIR = SCRIPT_DIR / "logs"
@@ -66,11 +68,11 @@ print("=" * 60)
 def execute_sql_file(sql_path: Path, session):
 
     if session is None:
-        print("❌ No Snowpark session available.")
+        print("No Snowpark session available.")
         return False
 
     if not sql_path.exists():
-        print(f"❌ Missing SQL file: {sql_path}")
+        print(f"Missing SQL file: {sql_path}")
         return False
 
     sql_text = sql_path.read_text(encoding="utf-8")
@@ -108,7 +110,7 @@ def execute_sql_file(sql_path: Path, session):
             executed += 1
         except Exception as e:
             errors += 1
-            print(f"⚠ SQL Error: {e}")
+            print(f"SQL Error: {e}")
             print(stmt[:150])
 
     print(f"Executed : {executed}")
@@ -185,28 +187,24 @@ def run_pipeline(phases=None, stop_on_error=False):
     try:
         from snowflake.snowpark.context import get_active_session
         session = get_active_session()
-        print("✔ Snowpark session active via internal context")
+        print("Snowpark session active via internal context")
     except Exception:
         # 2. External Runner Strategy using OIDC payload
         try:
             from snowflake.snowpark import Session
             import os
             import tempfile
-            
-            # 🏁 FIX 1: Explicitly clear the user variable from memory to stop 
-            # the driver from automatically appending a conflicting LOGIN_NAME.
+
             if "SNOWFLAKE_USER" in os.environ:
                 del os.environ["SNOWFLAKE_USER"]
-            
+
             target_token = os.environ.get("SNOWFLAKE_TOKEN")
-            
+
             if target_token:
-                # 🏁 FIX 2: Write the OIDC string to a temporary workspace file 
-                # to satisfy the strict 'token_file_path' driver specification.
                 with tempfile.NamedTemporaryFile(mode="w", delete=False, encoding="utf-8") as tf:
                     tf.write(target_token)
                     token_path = tf.name
-                
+
                 connection_config = {
                     "account": os.environ.get("SNOWFLAKE_ACCOUNT"),
                     "role": os.environ.get("SNOWFLAKE_ROLE"),
@@ -217,19 +215,18 @@ def run_pipeline(phases=None, stop_on_error=False):
                     "workload_identity_provider": "OIDC",
                     "token_file_path": token_path
                 }
-                
+
                 session = Session.builder.configs(connection_config).getOrCreate()
-                print("✔ Snowpark session successfully initialized via GitHub OIDC runner context")
-                
-                # Safely delete the temporary file after the session links successfully
+                print("Snowpark session initialized via GitHub OIDC runner context")
+
                 try:
                     os.unlink(token_path)
                 except Exception:
                     pass
             else:
-                print("⚠ OIDC Token variable 'SNOWFLAKE_TOKEN' is empty. Skipping external session instantiation.")
+                print("OIDC Token variable 'SNOWFLAKE_TOKEN' is empty. Skipping external session.")
         except Exception as err:
-            print(f"⚠ Unable to establish external Snowpark session link: {err}")
+            print(f"Unable to establish external Snowpark session: {err}")
 
     for index, phase in enumerate(EXECUTION_ORDER):
 
@@ -256,10 +253,10 @@ def run_pipeline(phases=None, stop_on_error=False):
             try:
                 run_python_script(script)
                 passed += 1
-                print("✔ Success")
+                print("Success")
             except Exception as e:
                 failed += 1
-                print(f"✖ Failed : {script.name}")
+                print(f"Failed : {script.name}")
                 print(str(e))
 
                 if stop_on_error:
@@ -273,7 +270,7 @@ def run_pipeline(phases=None, stop_on_error=False):
 
             try:
                 if execute_sql_file(sql_file, session):
-                    print("✔ Success")
+                    print("Success")
                 else:
                     failed += 1
                     if stop_on_error:

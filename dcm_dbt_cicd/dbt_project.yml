@@ -26,10 +26,4 @@ models:
   dcm_dbt_cicd:
     +materialized: view
 
-    patients:
-      +schema: PATIENTS_SILVER
-      +materialized: incremental
-
-    hospitals:
-      +schema: HOSPITALS_SILVER
-      +materialized: incremental
+    
