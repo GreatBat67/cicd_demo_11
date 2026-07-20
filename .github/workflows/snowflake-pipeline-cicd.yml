@@ -4,7 +4,7 @@ on:
 
 env:
   SNOWFLAKE_ACCOUNT: "KIPI-KIPI_PRIMARY"
-  SNOWFLAKE_ROLE: "github_cicd_demo_role"
+  SNOWFLAKE_ROLE: "PSEUDO_ACCOUNTADMIN"
   SNOWFLAKE_WAREHOUSE: "github_cicd_demo_wh"
   SNOWFLAKE_CLI_FEATURES_ENABLE_SNOWFLAKE_PROJECTS: "true"
   SNOWFLAKE_DATABASE: "CICD_DEMO_CICD"
@@ -17,14 +17,14 @@ jobs:
     environment: cicd 
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Run Modular Infrastructure Verification (DCM Plan)
         uses: ./.github/workflows/modules/action-dcm-engine
         with:
           dcm_dir: "dcm_automation"
           dcm_target: "DCM_CICD"
           action_type: "plan"
-          
+
       - name: Run Modular Data Transformation Verification (dbt Plan)
         uses: ./.github/workflows/modules/action-dbt-engine
         with:
@@ -39,14 +39,14 @@ jobs:
     environment: cicd 
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Live Deploy to Database Target (DCM Deploy)
         uses: ./.github/workflows/modules/action-dcm-engine
         with:
           dcm_dir: "dcm_automation"
           dcm_target: "DCM_CICD"
           action_type: "deploy"
-          
+
       - name: Live Database Content Transformations (dbt Deploy)
         uses: ./.github/workflows/modules/action-dbt-engine
         with:
@@ -54,3 +54,4 @@ jobs:
           dbt_project: "dbt_project_prod"
           dcm_target: "DCM_CICD"
           action_type: "deploy"
+
