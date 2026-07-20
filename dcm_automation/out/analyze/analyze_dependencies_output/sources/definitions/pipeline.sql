@@ -1,4 +1,0 @@
-DEFINE DBT PROJECT CICD_AUTOMATION_DEV.utilities.DCM_DBT_CICD
-    FROM 'sources/dbt/dcm_dbt_cicd'
-    DEFAULT_TARGET = 'DCM_DEV' 
-;

@@ -3,16 +3,11 @@ snowflake_global:
   admin_role: "PSEUDO_ACCOUNTADMIN"
   warehouse: "github_cicd_demo_wh"
 
-roles:
-  DBA_ADMIN:
-    create: true
-    read: true
-    ownership: true
-
-  DBA_FR:
-    create: true
-    read: true
-    ownership: false
+dbt_global:
+  dbt_dir: "./dcm_dbt_cicd"
+  project_name: "dcm_dbt_cicd"
+  profile: "dcm_dbt_cicd"
+  threads: 4
 
 branch_data:
 
@@ -32,12 +27,15 @@ branch_data:
     sf_schemas:
       - "UTILITIES"
 
-    dcm_target: "DCM_DEV"
-    dcm_dir: "dcm_automation"
-
+    dbt_target: "dev"
     dbt_dir: "./dcm_dbt_cicd"
-    dbt_project_dev: "dbt_project_dev"
-    dbt_project_prod: "dbt_project_prod"
+    dbt_project: "dbt_project_dev"
+    dbt_profile: "default"
+    dbt_warehouse: "github_cicd_demo_wh"
+    dbt_database: "CICD_DEMO_DEV"
+    dbt_schema: "UTILITIES"
+
+    is_default_target: true
 
   qa:
     require_pr: true
@@ -58,12 +56,15 @@ branch_data:
       - "PATIENTS"
       - "MANAGEMENT"
 
-    dcm_target: "DCM_QA"
-    dcm_dir: "dcm_automation"
-
+    dbt_target: "qa"
     dbt_dir: "./dcm_dbt_cicd"
-    dbt_project_dev: "dbt_project_dev"
-    dbt_project_prod: "dbt_project_prod"
+    dbt_project: "dbt_project_dev"
+    dbt_profile: "default"
+    dbt_warehouse: "github_cicd_demo_wh"
+    dbt_database: "CICD_DEMO_QA"
+    dbt_schema: "UTILITIES"
+
+    is_default_target: false
 
   cicd:
     require_pr: true
@@ -82,12 +83,15 @@ branch_data:
     sf_schemas:
       - "UTILITIES"
 
-    dcm_target: "DCM_CICD"
-    dcm_dir: "dcm_automation"
-
+    dbt_target: "cicd"
     dbt_dir: "./dcm_dbt_cicd"
-    dbt_project_dev: "dbt_project_dev"
-    dbt_project_prod: "dbt_project_prod"
+    dbt_project: "dbt_project_dev"
+    dbt_profile: "default"
+    dbt_warehouse: "github_cicd_demo_wh"
+    dbt_database: "CICD_DEMO_CICD"
+    dbt_schema: "UTILITIES"
+
+    is_default_target: false
 
   main:
     require_pr: true
@@ -107,34 +111,12 @@ branch_data:
       - "UTILITIES"
       - "PATIENTS"
 
-    dcm_target: "DCM_PROD"
-    dcm_dir: "dcm_automation"
-
+    dbt_target: "prod"
     dbt_dir: "./dcm_dbt_cicd"
-    dbt_project_dev: "dbt_project_dev"
-    dbt_project_prod: "dbt_project_prod"
-    
-  dcm_project:
-    require_pr: true
-    required_approvals: 1
-    approvers:
-      - "GreatBat67"
+    dbt_project: "dbt_project_prod"
+    dbt_profile: "default"
+    dbt_warehouse: "github_cicd_demo_wh"
+    dbt_database: "CICD_DEMO_PROD"
+    dbt_schema: "UTILITIES"
 
-    sf_user: "github_cicd_demo_project_user"
-    sf_roles:
-      - "DBA_ADMIN"
-      - "DBA_FR"
-
-    sf_databases:
-      - "CICD_METADATA"
-
-    sf_schemas:
-      - "DCM_CONFIG"
-
-    dcm_target: "DCM_METADATA"
-    is_default_target: true
-    dcm_dir: "dcm_automation"
-
-    dbt_dir: "./dcm_dbt_cicd"
-    dbt_project_dev: "dbt_project_dev"
-    dbt_project_prod: "dbt_project_prod"
+    is_default_target: false

@@ -1,3 +1,0 @@
-DEFINE STAGE CICD_AUTOMATION_DEV.PATIENTS.PATIENTS_STAGE
-DIRECTORY = ( ENABLE = TRUE )
-COMMENT = 'Internal stage for incoming patient  files (CSV)'

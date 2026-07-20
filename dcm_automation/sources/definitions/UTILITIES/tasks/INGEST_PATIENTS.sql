@@ -1,9 +1,0 @@
-DEFINE TASK {{ database }}.UTILITIES.INGEST_PATIENTS
-	warehouse=DISHA_RANI_WH
-	schedule='USING CRON 00 13 * * * Asia/Kolkata'
-	as BEGIN
-    COPY INTO {{ database }}.PATIENTS.PATIENTS
-    FROM @{{ database }}.PATIENTS.PATIENTS_STAGE
-    FILE_FORMAT = 'CICD_AUTOMATION.UTILITIES.CSV'
-    ;
-END;
