@@ -1,65 +1,97 @@
 manifest_version: 2
 type: DCM_PROJECT
-default_target: DCM_DEV
+default_target: DCM_METADATA
 targets:
   DCM_DEV:
     account_identifier: KIPI-KIPI_PRIMARY
-    project_name: CICD_AUTOMATION_DEV.UTILITIES.dcm_automation
-    project_owner: GITHUB_CICD_DEMO_ROLE
-    templating_config: DEV
+    project_name: CICD_METADATA.DCM_CONFIG.DCM_AUTOMATION
+    project_owner: PSEUDO_ACCOUNTADMIN
+    templating_config: dev
   DCM_QA:
     account_identifier: KIPI-KIPI_PRIMARY
-    project_name: CICD_AUTOMATION_QA.UTILITIES.dcm_automation
-    project_owner: GITHUB_CICD_DEMO_ROLE
-    templating_config: QA
+    project_name: CICD_METADATA.DCM_CONFIG.DCM_AUTOMATION
+    project_owner: PSEUDO_ACCOUNTADMIN
+    templating_config: qa
+  DCM_CICD:
+    account_identifier: KIPI-KIPI_PRIMARY
+    project_name: CICD_METADATA.DCM_CONFIG.DCM_AUTOMATION
+    project_owner: PSEUDO_ACCOUNTADMIN
+    templating_config: cicd
   DCM_PROD:
     account_identifier: KIPI-KIPI_PRIMARY
-    project_name: CICD_AUTOMATION_PROD.UTILITIES.dcm_automation
-    project_owner: GITHUB_CICD_DEMO_ROLE
-    templating_config: PROD
+    project_name: CICD_METADATA.DCM_CONFIG.DCM_AUTOMATION
+    project_owner: PSEUDO_ACCOUNTADMIN
+    templating_config: main
+  DCM_METADATA:
+    account_identifier: KIPI-KIPI_PRIMARY
+    project_name: CICD_METADATA.DCM_CONFIG.DCM_AUTOMATION
+    project_owner: PSEUDO_ACCOUNTADMIN
+    templating_config: dcm_project
 templating:
   defaults:
-    project_owner_role: GITHUB_CICD_DEMO_ROLE
-    warehouse: DISHA_RANI_WH
-    wh_size: XSMALL
-    dcm_schema: UTILITIES
+    project_owner_role: PSEUDO_ACCOUNTADMIN
+    warehouse: github_cicd_demo_wh
   configurations:
-    DEV:
-      environment: DEV
-      env_suffix: _DEV
-      database: CICD_AUTOMATION_DEV
+    dev:
+      environment: dev
+      env_suffix: _dev
+      database: CICD_DEMO_DEV
       schemas:
-      - PATIENTS
-      - HOSPITALS
       - UTILITIES
-      dcm_schema: UTILITIES
-      project_name: CICD_AUTOMATION_DEV.UTILITIES.dcm_automation
-      project_owner: GITHUB_CICD_DEMO_ROLE
+      project_name: CICD_METADATA.DCM_CONFIG.DCM_AUTOMATION
+      project_owner: PSEUDO_ACCOUNTADMIN
       roles:
-      - GITHUB_CICD_DEMO_ROLE
-    QA:
-      environment: QA
-      env_suffix: _QA
-      database: CICD_AUTOMATION_QA
+        DBA_ADMIN: DBA_ADMIN
+        DBA_FR: DBA_FR
+      is_default_target: false
+    qa:
+      environment: qa
+      env_suffix: _qa
+      database: CICD_DEMO_QA
       schemas:
-      - PATIENTS
-      - HOSPITALS
       - UTILITIES
-      dcm_schema: UTILITIES
-      project_name: CICD_AUTOMATION_QA.UTILITIES.dcm_automation
-      project_owner: GITHUB_CICD_DEMO_ROLE
+      - PATIENTS
+      - MANAGEMENT
+      project_name: CICD_METADATA.DCM_CONFIG.DCM_AUTOMATION
+      project_owner: PSEUDO_ACCOUNTADMIN
       roles:
-      - GITHUB_CICD_DEMO_ROLE
-    PROD:
-      environment: PROD
-      env_suffix: _PROD
-      database: CICD_AUTOMATION_PROD
+        DBA_ADMIN: DBA_ADMIN
+        DBA_FR: DBA_FR
+      is_default_target: false
+    cicd:
+      environment: cicd
+      env_suffix: _cicd
+      database: CICD_DEMO_CICD
       schemas:
-      - PATIENTS
-      - HOSPITALS
       - UTILITIES
-      dcm_schema: UTILITIES
-      project_name: CICD_AUTOMATION_PROD.UTILITIES.dcm_automation
-      project_owner: GITHUB_CICD_DEMO_ROLE
+      project_name: CICD_METADATA.DCM_CONFIG.DCM_AUTOMATION
+      project_owner: PSEUDO_ACCOUNTADMIN
       roles:
-      - GITHUB_CICD_DEMO_ROLE
+        DBA_ADMIN: DBA_ADMIN
+        DBA_FR: DBA_FR
+      is_default_target: false
+    main:
+      environment: main
+      env_suffix: _main
+      database: CICD_DEMO_PROD
+      schemas:
+      - UTILITIES
+      - PATIENTS
+      project_name: CICD_METADATA.DCM_CONFIG.DCM_AUTOMATION
+      project_owner: PSEUDO_ACCOUNTADMIN
+      roles:
+        DBA_ADMIN: DBA_ADMIN
+        DBA_FR: DBA_FR
+      is_default_target: false
+    dcm_project:
+      environment: dcm_project
+      env_suffix: _dcm_project
+      database: CICD_METADATA
+      schemas:
+      - DCM_CONFIG
+      project_name: CICD_METADATA.DCM_CONFIG.DCM_AUTOMATION
+      project_owner: PSEUDO_ACCOUNTADMIN
+      roles:
+        DBA_ADMIN: DBA_ADMIN
+        DBA_FR: DBA_FR
+      is_default_target: true

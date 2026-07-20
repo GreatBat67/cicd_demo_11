@@ -1,45 +1,46 @@
+
 from pathlib import Path
 import sys
+import importlib
+
 sys.dont_write_bytecode = True
+
+# ============================================================
+# LOAD CONFIGURATION
+# ============================================================
 
 ROOT = Path.cwd().parent
 
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-import importlib
 import config.config as cfg
 
 importlib.reload(cfg)
 
 config = cfg.config
 LOGS_DIR = cfg.LOGS_DIR
-PROJECT_DIR = cfg.PROJECT_DIR
 
-# Variables
-LOGS_DIR = cfg.LOGS_DIR
-DATABASES = cfg.DATABASES
-SCHEMAS = cfg.SCHEMAS
-ROLES = cfg.ROLES
-DBT = cfg.DBT
-DBT_TARGETS = cfg.DBT_TARGETS
-DBT_SCHEMAS = cfg.DBT_SCHEMAS
+
+# ============================================================
+# CONFIG
+# ============================================================
+
+BRANCH_DATA = config.branch_data
+ROLES = config.roles
+ADMIN_ROLE = config.admin_role
+
+
 # ============================================================
 # OUTPUT LOCATION
 # ============================================================
 
 OUTPUT_FILE = LOGS_DIR / "generate_databases.sql"
 
-# ============================================================
-# CONFIG
-# ============================================================
 
-PROJECT = config.project
-DATABASES = config.databases
-SCHEMAS = config.schemas
-ROLES = config.roles
-
-ADMIN_ROLE = config.snowflake["admin_role"]
+# ============================================================
+# PRIVILEGES
+# ============================================================
 
 SCHEMA_CREATE_GRANTS = [
     "CREATE TABLE",
@@ -53,157 +54,140 @@ SCHEMA_CREATE_GRANTS = [
     "CREATE FUNCTION",
     "CREATE DCM PROJECT",
 ]
+
+
 # ============================================================
 # GENERATE SQL
 # ============================================================
 
 sql = []
 
-# ------------------------------------------------------------
+sql.append("-- ====================================================")
+sql.append("-- DATABASE AND SCHEMA CREATION")
+sql.append("-- ====================================================")
+sql.append("")
+
+# ============================================================
 # ADMIN ROLE
-# ------------------------------------------------------------
+# ============================================================
 
 sql.append(f"USE ROLE {ADMIN_ROLE};")
 sql.append("")
 
-# ------------------------------------------------------------
-# CREATE DATABASES & SCHEMAS
-# ------------------------------------------------------------
 
-sql.append("-- ====================================================")
-sql.append("-- CREATE DATABASES & SCHEMAS")
-sql.append("-- ====================================================")
-sql.append("")
-
-for db in DATABASES:
-
-    db_name = db["name"]
-
-    sql.append(f"CREATE DATABASE IF NOT EXISTS {db_name};")
-
-    # Merge application schemas and DBT schemas
-    ALL_SCHEMAS = list(SCHEMAS)
-
-    for schema in DBT_SCHEMAS:
-        if schema not in ALL_SCHEMAS:
-            ALL_SCHEMAS.append(schema)
-
-    # Create all schemas
-    for schema in ALL_SCHEMAS:
-        sql.append(
-            f"CREATE SCHEMA IF NOT EXISTS {db_name}.{schema};"
-        )
-
-    sql.append("")
-
-# ------------------------------------------------------------
+# ============================================================
 # CREATE ROLES
-# ------------------------------------------------------------
+# ============================================================
 
 sql.append("-- ====================================================")
 sql.append("-- CREATE ROLES")
 sql.append("-- ====================================================")
 sql.append("")
 
-for role in ROLES.keys():
+for role in ROLES:
+
     sql.append(f"CREATE ROLE IF NOT EXISTS {role};")
 
-    # Don't grant a role to itself
-    if role.strip().upper() != ADMIN_ROLE.strip().upper():
+    if role.upper() != ADMIN_ROLE.upper():
         sql.append(f"GRANT ROLE {role} TO ROLE {ADMIN_ROLE};")
 
 sql.append("")
 
-# ------------------------------------------------------------
-# ROLE GRANTS
-# ------------------------------------------------------------
 
-for role, policy in ROLES.items():
+# ============================================================
+# CREATE DATABASES AND SCHEMAS PER BRANCH
+# ============================================================
+
+for branch_name, branch in BRANCH_DATA.items():
+
+    databases = branch.get("sf_databases", [])
+    schemas = branch.get("sf_schemas", [])
+    branch_roles = branch.get("sf_roles", list(ROLES.keys()))
 
     sql.append("-- ====================================================")
-    sql.append(f"-- ROLE : {role}")
+    sql.append(f"-- BRANCH: {branch_name}")
     sql.append("-- ====================================================")
     sql.append("")
 
-    for db in DATABASES:
+    for db_name in databases:
 
-        db_name = db["name"]
+        sql.append(f"CREATE DATABASE IF NOT EXISTS {db_name};")
 
-        # Merge application schemas and DBT schemas
-        ALL_SCHEMAS = list(SCHEMAS)
-
-        for schema in DBT_SCHEMAS:
-            if schema not in ALL_SCHEMAS:
-                ALL_SCHEMAS.append(schema)
-
-        sql.append(f"-- Database : {db_name}")
-        sql.append(f"GRANT USAGE ON DATABASE {db_name} TO ROLE {role};")
-
-        if policy.get("create", False):
+        for schema in schemas:
             sql.append(
-                f"GRANT CREATE SCHEMA ON DATABASE {db_name} TO ROLE {role};"
+                f"CREATE SCHEMA IF NOT EXISTS {db_name}.{schema};"
             )
 
         sql.append("")
 
-        # ----------------------------------------------------
-        # Schema Grants
-        # ----------------------------------------------------
+    # ============================================================
+    # GRANTS PER ROLE FOR THIS BRANCH
+    # ============================================================
 
-        for schema in ALL_SCHEMAS:
+    for role in branch_roles:
 
-            full_schema = f"{db_name}.{schema}"
+        policy = ROLES.get(role, {})
 
-            sql.append("-- ----------------------------------------------------")
-            sql.append(f"-- Schema : {schema}")
-            sql.append("-- ----------------------------------------------------")
+        for db_name in databases:
 
-            # Usage
             sql.append(
-                f"GRANT USAGE ON SCHEMA {full_schema} TO ROLE {role};"
+                f"GRANT USAGE ON DATABASE "
+                f"{db_name} TO ROLE {role};"
             )
 
-            # Create privileges
-            if policy.get("create", False):
+            if policy.get("create"):
                 sql.append(
-                    f"GRANT {', '.join(SCHEMA_CREATE_GRANTS)} "
-                    f"ON SCHEMA {full_schema} TO ROLE {role};"
+                    f"GRANT CREATE SCHEMA ON DATABASE "
+                    f"{db_name} TO ROLE {role};"
                 )
 
-            # Read privileges
-            if policy.get("read", False):
+            for schema in schemas:
+
+                full_schema = f"{db_name}.{schema}"
+
                 sql.append(
-                    f"GRANT SELECT ON ALL TABLES IN SCHEMA {full_schema} TO ROLE {role};"
-                )
-                sql.append(
-                    f"GRANT SELECT ON FUTURE TABLES IN SCHEMA {full_schema} TO ROLE {role};"
-                )
-                sql.append(
-                    f"GRANT SELECT ON ALL VIEWS IN SCHEMA {full_schema} TO ROLE {role};"
-                )
-                sql.append(
-                    f"GRANT SELECT ON FUTURE VIEWS IN SCHEMA {full_schema} TO ROLE {role};"
+                    f"GRANT USAGE ON SCHEMA "
+                    f"{full_schema} TO ROLE {role};"
                 )
 
-            sql.append("")
+                if policy.get("create"):
+                    for privilege in SCHEMA_CREATE_GRANTS:
+                        sql.append(
+                            f"GRANT {privilege} ON SCHEMA "
+                            f"{full_schema} TO ROLE {role};"
+                        )
+
+                if policy.get("read"):
+                    sql.append(
+                        f"GRANT SELECT ON ALL TABLES IN SCHEMA "
+                        f"{full_schema} TO ROLE {role};"
+                    )
+                    sql.append(
+                        f"GRANT SELECT ON FUTURE TABLES IN SCHEMA "
+                        f"{full_schema} TO ROLE {role};"
+                    )
+                    sql.append(
+                        f"GRANT SELECT ON ALL VIEWS IN SCHEMA "
+                        f"{full_schema} TO ROLE {role};"
+                    )
+                    sql.append(
+                        f"GRANT SELECT ON FUTURE VIEWS IN SCHEMA "
+                        f"{full_schema} TO ROLE {role};"
+                    )
 
         sql.append("")
 
-    # --------------------------------------------------------
-    # ACCOUNT LEVEL GRANTS
-    # --------------------------------------------------------
 
-    #sql.append(f"GRANT EXECUTE TASK ON ACCOUNT TO ROLE {role};")
-    #if role.strip().upper() != ADMIN_ROLE.strip().upper():
-    #  sql.append(f"GRANT CREATE ROLE ON ACCOUNT TO ROLE {role};")
-    # sql.append(f"GRANT MANAGE GRANTS ON ACCOUNT TO ROLE {role};")
-    
-    sql.append("")
-    
 # ============================================================
-# WRITE FILE
+# WRITE SQL
 # ============================================================
 
-OUTPUT_FILE.write_text("\n".join(sql), encoding="utf-8")
+OUTPUT_FILE.write_text(
+    "\n".join(sql),
+    encoding="utf-8"
+)
 
-print(f"\nSQL written successfully:\n{OUTPUT_FILE.resolve()}")
+print("=" * 60)
+print("Database and grants SQL generated successfully.")
+print(f"Output: {OUTPUT_FILE.resolve()}")
+print("=" * 60)

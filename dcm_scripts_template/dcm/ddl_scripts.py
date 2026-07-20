@@ -22,7 +22,7 @@ from config.config import config
 # CONFIG
 # ============================================================
 
-DATABASES = config.databases
+BRANCH_DATA = config.branch_data
 
 SYSTEM_OWNERS = {
     "SYSTEM",
@@ -35,10 +35,8 @@ SYSTEM_OWNERS = {
 # PATH SETUP
 # ============================================================
 
-CURRENT_DIR = Path.cwd()
-BASE_DIR = CURRENT_DIR.parent
-
-TARGET_ROOT = BASE_DIR / "Projects" / "DDL"
+SCRIPTS_DIR = ROOT
+TARGET_ROOT = SCRIPTS_DIR / "ddl_scripts"
 TARGET_ROOT.mkdir(parents=True, exist_ok=True)
 
 print("DDL ROOT:", TARGET_ROOT)
@@ -84,7 +82,7 @@ def replace_env(text, source_db, target_db):
 
 def get_path(obj_type, name, schema):
     folder = FOLDER_MAP.get(obj_type, "others")
-    path = TARGET_ROOT / schema / folder
+    path = TARGET_ROOT / folder
     path.mkdir(parents=True, exist_ok=True)
     return path / f"{name}.sql"
 
@@ -202,21 +200,17 @@ def get_ddl(
 
 objects = []
 
-import config.config as cfg 
+# Use dev branch databases and schemas for DDL extraction
+_dev_branch = BRANCH_DATA.get("dev", {})
+DEV_DATABASES = _dev_branch.get("sf_databases", [])
+DEV_SCHEMAS = _dev_branch.get("sf_schemas", config.all_schemas)
 
-for db in DATABASES:
-    SOURCE_DB = db["name"]
-    
-    # Skip any database that is not for the DEV environment
-    if not SOURCE_DB.endswith("_DEV"):
-        continue
-        
-    TARGET_DB = db.get("target_name", SOURCE_DB) 
-    SCHEMAS = cfg.SCHEMAS  
-    
+for SOURCE_DB in DEV_DATABASES:
+    TARGET_DB = SOURCE_DB
+
     print(f"\nProcessing database: {SOURCE_DB}")
-    # ... rest of your loop continues as normal
-    for schema in SCHEMAS:
+
+    for schema in DEV_SCHEMAS:
 
         print(f"Processing schema: {schema}")
 

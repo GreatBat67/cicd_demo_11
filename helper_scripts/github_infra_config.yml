@@ -2,7 +2,7 @@
 # GLOBAL REPOSITORY GOVERNANCE SETTINGS
 # ==============================================================================
 owner: "GreatBat67"
-repo_name: "cicd_demo_9"
+repo_name: "cicd_demo_11"
 project_description: "Snowflake Gated GitOps Core Offering"
 
 # The sequential promotion flow of code across environments
@@ -14,7 +14,7 @@ branch_sequence:
 
 # 🚚 Inter-Repository Source Configuration Meta (Template Target)
 source_repository: "https://github.com/kipibi/CI_CD_STANDARD_TIER_OFFERING_TEMPLATE"
-source_branch: "dev"
+source_branch: "dev_dcm_disha"
 
 # Codebase template migration target scopes (Copied locally via Git CLI)
 files_to_copy:
@@ -22,9 +22,11 @@ files_to_copy:
   - "snowflake.toml"
 folders_to_copy:
   - "dcm_automation"
-  - "scripts"
+  - "Projects"
+  - "dcm_scripts_template"
+  - "helper_scripts"
   - "dcm_dbt_cicd"
-  - "Helper_Scripts"
+
 
 # ==============================================================================
 # GLOBAL SNOWFLAKE CONNECTION PARAMETERS
@@ -44,7 +46,7 @@ branch_data:
     approvers: []
     sf_user: "github_cicd_demo_dev_user"
     sf_databases:
-      - "CICD_DEMO_AUTOMATION_DEV"
+      - "CICD_DEMO_DEV"
     sf_schemas:
       - "UTILITIES"
     dcm_target: "DCM_DEV"
@@ -60,7 +62,6 @@ branch_data:
       - "GreatBat67"
     sf_user: "github_cicd_demo_qa_user"
     sf_databases:
-      - "CICD_DEMO_AUTOMATION_QA"
       - "CICD_AUTOMATION_QA"
     sf_schemas:
       - "UTILITIES"
@@ -79,7 +80,7 @@ branch_data:
       - "GreatBat67"
     sf_user: "github_cicd_demo_cicd_user"
     sf_databases:
-      - "CICD_DEMO_AUTOMATION_CICD"
+      - "CICD_DEMO_CICD"
     sf_schemas:
       - "UTILITIES"
     dcm_target: "DCM_CICD"
@@ -95,7 +96,7 @@ branch_data:
       - "GreatBat67"
     sf_user: "github_cicd_demo_prod_user"
     sf_databases: 
-      - "CICD_DEMO_AUTOMATION_PROD"
+      - "CICD_DEMO_PROD"
     sf_schemas: 
       - "UTILITIES"
       - "PATIENTS"

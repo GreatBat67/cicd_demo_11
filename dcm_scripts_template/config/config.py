@@ -12,11 +12,9 @@ class ConfigLoader:
         # ----------------------------------------------------
 
         try:
-            # Running as a Python script
             base_dir = Path(__file__).resolve().parent
 
         except NameError:
-            # Running in Notebook/Jupyter
             current = Path.cwd().resolve()
 
             base_dir = None
@@ -59,32 +57,80 @@ class ConfigLoader:
     # ========================================================
 
     @property
-    def project(self):
-        return self._config.get("project", {})
-
-    @property
-    def snowflake(self):
-        return self._config.get("snowflake", {})
-
-    @property
-    def databases(self):
-        return self._config.get("databases", [])
-
-    @property
-    def schemas(self):
-        return self._config.get("schemas", [])
+    def snowflake_global(self):
+        return self._config.get("snowflake_global", {})
 
     @property
     def roles(self):
         return self._config.get("roles", {})
 
     @property
-    def dcm_project(self):
-        return self._config.get("dcm_project", {})
+    def branch_data(self):
+        return self._config.get("branch_data", {})
+
+    # ========================================================
+    # Derived helpers
+    # ========================================================
 
     @property
-    def dbt(self):
-        return self._config.get("dbt", {})
+    def account_identifier(self):
+        return self.snowflake_global.get("account_identifier")
+
+    @property
+    def admin_role(self):
+        return self.snowflake_global.get("admin_role")
+
+    @property
+    def warehouse(self):
+        return self.snowflake_global.get("warehouse")
+
+    def get_branch(self, branch_name):
+        return self.branch_data.get(branch_name, {})
+
+    @property
+    def all_databases(self) -> list:
+        """Dynamically aggregates all unique databases from every single branch 
+        and project target block configured within project_config.yml."""
+        dbs = set()
+    
+    # Iterate through all configured blocks under branch_data dynamically
+        for branch_name, branch in self.branch_data.items():
+            if isinstance(branch, dict):
+                 for db in branch.get("sf_databases", []):
+                     dbs.add(db.upper())
+                
+        return sorted(list(dbs))
+
+    @property
+    def all_schemas(self):
+        """All unique schemas across all branches."""
+        schemas = []
+        for branch_name, branch in self.branch_data.items():
+            for schema in branch.get("sf_schemas", []):
+                if schema not in schemas:
+                    schemas.append(schema)
+        return schemas
+
+    @property
+    def environments(self):
+        """List of branch/environment names."""
+        return list(self.branch_data.keys())
+
+    @property
+    def dcm_project_name(self):
+        """DCM project directory name (common across branches)."""
+        for branch in self.branch_data.values():
+            if "dcm_dir" in branch:
+                return branch["dcm_dir"]
+        return None
+
+    @property
+    def dbt_dir(self):
+        """dbt directory path (common across branches)."""
+        for branch in self.branch_data.values():
+            if "dbt_dir" in branch:
+                return branch["dbt_dir"]
+        return None
 
 
 # ============================================================
@@ -93,42 +139,22 @@ class ConfigLoader:
 
 config = ConfigLoader()
 
-PROJECT = config.project
-PROJECT_NAME = PROJECT.get("name")
+# Snowflake global
+ACCOUNT_IDENTIFIER = config.account_identifier
+ADMIN_ROLE = config.admin_role
+WAREHOUSE = config.warehouse
 
-SNOWFLAKE = config.snowflake
-DATABASES = config.databases
-SCHEMAS = config.schemas
+# Roles
 ROLES = config.roles
-DCM_PROJECT = config.dcm_project
 
-ADMIN_ROLE = SNOWFLAKE.get("admin_role")
-ACCOUNT_IDENTIFIER = SNOWFLAKE.get("account_identifier")
-WAREHOUSE = SNOWFLAKE.get("warehouse")
-WAREHOUSE_SIZE = SNOWFLAKE.get("warehouse_size")
+# Branch data
+BRANCH_DATA = config.branch_data
 
-USER = SNOWFLAKE.get("users")
-THREADS = SNOWFLAKE.get("threads")
-client_session_keep_alive = SNOWFLAKE.get("client_session_keep_alive")
-
-
-DCM_PROJECT = config.dcm_project
-DBT = config.dbt
-DBT_PROFILE_NAME = DBT.get("profile_name")
-DBT_DEFAULT_TARGET = DBT.get("default_target")
-DBT_TARGET_PREFIX = DBT.get("target_prefix")
-
-DBT_PROJECT = DBT.get("project", {})
-DBT_PROJECT_SCHEMA = DBT_PROJECT.get("schema")
-DBT_PROJECT_OWNER_ROLE = DBT_PROJECT.get("owner_role")
-
-DBT_TARGETS = DBT.get("targets", {})
-DBT_SCHEMAS = sorted(
-    {
-        target["schema"]
-        for target in DBT_TARGETS.values()
-    }
-)
+# Derived
+ALL_DATABASES = config.all_databases
+ALL_SCHEMAS = config.all_schemas
+DCM_PROJECT_NAME = config.dcm_project_name
+DBT_DIR = config.dbt_dir
 
 # ============================================================
 # DIRECTORY STRUCTURE
@@ -142,10 +168,6 @@ LOGS_DIR.mkdir(parents=True, exist_ok=True)
 
 # workspace/ (parent of scripts)
 WORKSPACE_DIR = SCRIPTS_DIR.parent
-LOGS_DIR.mkdir(parents=True, exist_ok=True)
-
-DBT_PROJECT_DIR = WORKSPACE_DIR / DBT_PROFILE_NAME
-DBT_PROJECT_DIR.mkdir(parents=True, exist_ok=True)
 
 # ------------------------------------------------------------
 # Locate DCM project
@@ -153,27 +175,32 @@ DBT_PROJECT_DIR.mkdir(parents=True, exist_ok=True)
 
 PROJECT_DIR = None
 
-for child in WORKSPACE_DIR.iterdir():
+if DCM_PROJECT_NAME:
+    for child in WORKSPACE_DIR.iterdir():
+        if (
+            child.is_dir()
+            and child.name.lower() == DCM_PROJECT_NAME.lower()
+        ):
+            PROJECT_DIR = child.resolve()
+            break
 
-    if (
-        child.is_dir()
-        and child.name.lower() == PROJECT_NAME.lower()
-    ):
-        PROJECT_DIR = child.resolve()
-        break
+MANIFEST_FILE = PROJECT_DIR / "manifest.yml" if PROJECT_DIR else None
 
-if PROJECT_DIR is None:
-    raise RuntimeError(
-        f"Could not locate project '{PROJECT_NAME}'."
-    )
+MACROS_DIR = None
+DEFINITIONS_DIR = None
 
-MANIFEST_FILE = PROJECT_DIR / "manifest.yml"
+if PROJECT_DIR:
+    MACROS_DIR = PROJECT_DIR / "sources" / "macros"
+    MACROS_DIR.mkdir(parents=True, exist_ok=True)
 
-MACROS_DIR = PROJECT_DIR / "sources" / "macros"
-MACROS_DIR.mkdir(parents=True, exist_ok=True)
+    DEFINITIONS_DIR = PROJECT_DIR / "sources" / "definitions"
+    DEFINITIONS_DIR.mkdir(parents=True, exist_ok=True)
 
-DEFINITIONS_DIR = PROJECT_DIR / "sources" / "definitions"
-DEFINITIONS_DIR.mkdir(parents=True, exist_ok=True)
+# dbt project directory
+DBT_PROJECT_DIR = None
+if DBT_DIR:
+    DBT_PROJECT_DIR = WORKSPACE_DIR / Path(DBT_DIR).name
+    DBT_PROJECT_DIR.mkdir(parents=True, exist_ok=True)
 
 # ============================================================
 # DEBUG
@@ -186,6 +213,9 @@ if __name__ == "__main__":
     print("=" * 60)
 
     print("Config File      :", config.config_file)
+    print("Account          :", ACCOUNT_IDENTIFIER)
+    print("Admin Role       :", ADMIN_ROLE)
+    print("Warehouse        :", WAREHOUSE)
     print("Scripts Dir      :", SCRIPTS_DIR)
     print("Workspace Dir    :", WORKSPACE_DIR)
     print("Logs Dir         :", LOGS_DIR)
@@ -194,6 +224,16 @@ if __name__ == "__main__":
     print("Macros           :", MACROS_DIR)
     print("Definitions      :", DEFINITIONS_DIR)
     print("dbt              :", DBT_PROJECT_DIR)
-    print("dbt_schemas     :", DBT_SCHEMAS)
+
+    print("\nBranches:")
+    for branch_name, branch in BRANCH_DATA.items():
+        print(f"  {branch_name}:")
+        print(f"    databases: {branch.get('sf_databases')}")
+        print(f"    schemas:   {branch.get('sf_schemas')}")
+        print(f"    dcm_target: {branch.get('dcm_target')}")
+
+    print("\nRoles:")
+    for role, policy in ROLES.items():
+        print(f"  {role}: {policy}")
 
     print("=" * 60)

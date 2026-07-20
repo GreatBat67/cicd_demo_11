@@ -1,37 +1,48 @@
 dcm_dbt_cicd:
-  target: DCM_DEV
+  target: dev
 
   outputs:
 
-    DCM_DEV:
+    dev:
       type: snowflake
       account: KIPI-KIPI_PRIMARY
-      user: DISHA_RANI
-      role: GITHUB_CICD_DEMO_ROLE
-      database: CICD_AUTOMATION_DEV
-      warehouse: DISHA_RANI_WH
-      schema: PATIENTS_SILVER
+      user: github_cicd_demo_dev_user
+      role: DBA_ADMIN
+      database: CICD_DEMO_DEV
+      warehouse: github_cicd_demo_wh
+      schema: UTILITIES
       threads: 4
       client_session_keep_alive: false
 
-    DCM_QA:
+    qa:
       type: snowflake
       account: KIPI-KIPI_PRIMARY
-      user: DISHA_RANI
-      role: GITHUB_CICD_DEMO_ROLE
-      database: CICD_AUTOMATION_QA
-      warehouse: DISHA_RANI_WH
-      schema: PATIENTS_SILVER
+      user: github_cicd_demo_qa_user
+      role: DBA_ADMIN
+      database: CICD_DEMO_QA
+      warehouse: github_cicd_demo_wh
+      schema: UTILITIES
       threads: 4
       client_session_keep_alive: false
 
-    DCM_PROD:
+    cicd:
       type: snowflake
       account: KIPI-KIPI_PRIMARY
-      user: DISHA_RANI
-      role: GITHUB_CICD_DEMO_ROLE
-      database: CICD_AUTOMATION_PROD
-      warehouse: DISHA_RANI_WH
-      schema: PATIENTS_SILVER
+      user: github_cicd_demo_cicd_user
+      role: DBA_ADMIN
+      database: CICD_DEMO_CICD
+      warehouse: github_cicd_demo_wh
+      schema: UTILITIES
+      threads: 4
+      client_session_keep_alive: false
+
+    prod:
+      type: snowflake
+      account: KIPI-KIPI_PRIMARY
+      user: github_cicd_demo_prod_user
+      role: DBA_ADMIN
+      database: CICD_DEMO_PROD
+      warehouse: github_cicd_demo_wh
+      schema: UTILITIES
       threads: 4
       client_session_keep_alive: false

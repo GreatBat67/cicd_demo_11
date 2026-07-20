@@ -1,6 +1,6 @@
 repo_name: cicd_demo_11
 owner: GreatBat67
-project_name: Snowflake Gated GitOps Core Offering
+project_name: github_cicd_demo_12
 default_branch: dev
 branches:
   dev:
